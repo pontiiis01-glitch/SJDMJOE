@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planejamento JOE 2026 | COCB-M</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <img src="brasao.png" alt="Brasão COCB" class="main-logo">
+                    <div class="logo-text">
+                        <span class="logo-title">COCB-M</span>
+                        <span class="logo-subtitle">Operação São João 2026</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="overview">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Visão Geral</span>
+                </button>
+                <button class="nav-item" data-tab="logistics">
+                    <i data-lucide="truck"></i>
+                    <span>Logística / VTRs</span>
+                </button>
+                <button class="nav-item" data-tab="calendar">
+                    <i data-lucide="calendar"></i>
+                    <span>Calendário Operacional</span>
+                </button>
+                <button class="nav-item" data-tab="reports">
+                    <i data-lucide="file-text"></i>
+                    <span>Relatórios</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer" style="padding: 1.5rem; border-top: 1px solid rgba(0,0,0,0.05); margin-top: auto;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; font-weight: 600; text-transform: uppercase;">Sincronização</div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="btn-sidebar-alt" id="btn-cloud-sync" title="Sincronizar com Nuvem">
+                        <i data-lucide="cloud-lightning"></i>
+                        <span>Sincronizar Cloud</span>
+                    </button>
+                    <button class="btn-sidebar-alt" id="btn-export-json">
+                        <i data-lucide="download"></i>
+                        <span>Exportar JSON</span>
+                    </button>
+                    <button class="btn-sidebar-alt" id="btn-import-json">
+                        <i data-lucide="upload"></i>
+                        <span>Importar JSON</span>
+                    </button>
+                    <input type="file" id="input-import-json" style="display: none;" accept=".json">
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-badge">
+                    <div class="avatar">C</div>
+                    <div class="user-info">
+                        <span class="user-name">COCB-M</span>
+                        <span class="user-role">Administrador</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="btn-icon" id="toggle-sidebar" title="Recolher Menu">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <h1 id="tab-title">Visão Geral</h1>
+                </div>
+                <div class="header-actions">
+                    <div class="search-container">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="event-search" placeholder="Filtrar por data ou nome...">
+                    </div>
+                    <div class="status-badge pulse">
+                        <span class="dot"></span>
+                        Operação Ativa
+                    </div>
+                    <button class="btn-icon" id="btn-toggle-finances" title="Ocultar/Exibir valores financeiros">
+                        <i data-lucide="eye-off"></i>
+                    </button>
+                    <button class="btn-icon"><i data-lucide="bell"></i></button>
+                    <button class="btn-primary" id="btn-add-event">
+                        <i data-lucide="plus"></i>
+                        Novo Evento
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tab Content: Overview -->
+            <section id="overview" class="tab-content active">
+                <div class="metrics-grid">
+                    <div class="metric-card gold financial-data">
+                        <div class="metric-icon"><i data-lucide="dollar-sign"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Orçamento Total Estimado</span>
+                            <h2 id="total-budget">R$ 0,00</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card gold financial-data" style="background: linear-gradient(to right, var(--card-bg), #fff7ed);">
+                        <div class="metric-icon" style="background: transparent;"><i data-lucide="calendar-days" style="color: #f59e0b;"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Custo Junho</span>
+                            <h2 id="budget-jun">R$ 0,00</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card gold financial-data" style="background: linear-gradient(to right, var(--card-bg), #fff7ed);">
+                        <div class="metric-icon" style="background: transparent;"><i data-lucide="calendar-days" style="color: #f59e0b;"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Custo Julho</span>
+                            <h2 id="budget-jul">R$ 0,00</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card blue">
+                        <div class="metric-icon"><i data-lucide="users"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Efetivo Total</span>
+                            <h2 id="total-man-days">0</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card blue" style="background: linear-gradient(to right, var(--card-bg), #eff6ff);">
+                        <div class="metric-icon" style="background: transparent;"><i data-lucide="shield" style="color: #3b82f6;"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Coordenação Total</span>
+                            <h2 id="total-coord-man-days">0</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card red">
+                        <div class="metric-icon"><i data-lucide="shield-alert"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Pico de Efetivo/Dia</span>
+                            <h2 id="peak-manpower">0 BMs</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-box main-chart financial-data" id="chart-box-cost">
+                        <div class="chart-header">
+                            <h3>Distribuição de Custos por Evento</h3>
+                            <div class="chart-actions">
+                                <select id="chart-filter">
+                                    <option value="cost">Custo Total</option>
+                                    <option value="cost-jun">Custo Junho</option>
+                                    <option value="cost-jul">Custo Julho</option>
+                                    <option value="efetivo">Efetivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="costDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box main-chart financial-hidden" id="chart-box-efetivo" style="display:none;">
+                        <div class="chart-header">
+                            <h3>Distribuição de Efetivo por Evento</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="efetivoDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-box side-panel">
+                        <div class="chart-header">
+                            <h3>Detalhamento</h3>
+                        </div>
+                        <div class="event-list-scroll" id="event-list">
+                            <!-- Events injected via JS -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="planning-notes-section" style="margin-top: 3rem;">
+                    <div class="section-header">
+                        <h3><i data-lucide="clipboard-list"></i> Notas de Planejamento Estratégico</h3>
+                        <p>Informações qualitativas para o fechamento da Ordem de Operação</p>
+                    </div>
+                    
+                    <div class="notes-grid">
+                        <!-- Observações -->
+                        <div class="note-card info">
+                            <div class="note-header">
+                                <i data-lucide="info"></i>
+                                <span>Observações</span>
+                            </div>
+                            <textarea id="note-obs" placeholder="Digite observações gerais aqui..."></textarea>
+                        </div>
+
+                        <!-- Necessidades Logísticas -->
+                        <div class="note-card logistics">
+                            <div class="note-header">
+                                <i data-lucide="package"></i>
+                                <span>Necessidades Logísticas</span>
+                            </div>
+                            <textarea id="note-logistics" placeholder="Ex: Rádios, Alimentação, Água..."></textarea>
+                        </div>
+
+                        <!-- Questões Críticas -->
+                        <div class="note-card critical">
+                            <div class="note-header">
+                                <i data-lucide="alert-triangle"></i>
+                                <span>Questões Críticas</span>
+                            </div>
+                            <textarea id="note-critical" placeholder="Riscos e irregularidades detectadas..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab Content: Logistics -->
+            <section id="logistics" class="tab-content">
+                <div class="logistics-container">
+                    <div class="map-section">
+                        <div class="section-header">
+                            <h3><i data-lucide="map-pin"></i> Mapa Operacional São João 2026</h3>
+                            <p>Distribuição geográfica dos eventos e recursos em São Luís</p>
+                        </div>
+                        <div id="map" class="operational-map"></div>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i data-lucide="info"></i>
+                    <p>Distribuição de recursos conforme Ordem de Operação baseada na classificação de risco.</p>
+                </div>
+
+                <div class="risk-levels-grid" id="risk-levels">
+                    <!-- Risk cards injected via JS -->
+                </div>
+            </section>
+
+            <!-- Tab Content: Calendar -->
+            <section id="calendar" class="tab-content">
+                <div class="calendar-container">
+                    <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h2>Calendário de Empenho JOE 2026</h2>
+                            <p>Visualize a sobreposição de eventos e o efetivo total diário</p>
+                        </div>
+                        <div class="calendar-actions" style="display: flex; gap: 0.5rem;">
+                            <button class="btn-secondary" onclick="previewScale(4)" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><i data-lucide="printer"></i> Escala Maio</button>
+                            <button class="btn-secondary" onclick="previewScale(5)" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><i data-lucide="printer"></i> Escala Junho</button>
+                            <button class="btn-secondary" onclick="previewScale(6)" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><i data-lucide="printer"></i> Escala Julho</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid-wrapper">
+                        <div id="calendar-may" class="month-container"></div>
+                        <div id="calendar-jun" class="month-container"></div>
+                        <div id="calendar-jul" class="month-container"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab Content: Reports -->
+            <section id="reports" class="tab-content">
+                <div class="reports-header">
+                    <h2>Exportação de Relatórios</h2>
+                    <div class="reports-actions" style="display: flex; gap: 1rem;">
+                        <button class="btn-primary" id="btn-download-pdf">
+                            <i data-lucide="file-text"></i> Baixar PDF
+                        </button>
+                        <button class="btn-primary" id="btn-download-excel" style="background: #16a34a; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
+                            <i data-lucide="file-spreadsheet"></i> Baixar Planilha
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- A4 Preview Container -->
+                <div class="pdf-preview-wrapper">
+                    <div class="a4-document" id="pdf-content">
+                        <!-- Official Header -->
+                        <div class="pdf-header">
+                            <div class="pdf-title-block" style="text-align: center; width: 100%;">
+                                <h3>ESTADO DO MARANHÃO</h3>
+                                <h4>CORPO DE BOMBEIROS MILITAR</h4>
+                                <h4>COMANDO OPERACIONAL DO CORPO DE BOMBEIROS METROPOLITANO - COCB-M</h4>
+                                <h2 style="margin-top: 15px; text-decoration: underline;">PLANEJAMENTO OPERACIONAL - SÃO JOÃO 2026</h2>
+                            </div>
+                        </div>
+
+                        <!-- Summary Block -->
+                        <div class="pdf-summary" style="margin-top: 30px;">
+                            <h3 style="border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">1. RESUMO FINANCEIRO E LOGÍSTICO</h3>
+                            <table class="pdf-table summary-table" style="margin-top: 15px; width: 100%;">
+                                <tr class="pdf-cost-row">
+                                    <th>Orçamento Total Estimado:</th>
+                                    <td id="pdf-total-budget" style="font-weight: bold; color: #0f172a;"></td>
+                                </tr>
+                                <tr class="pdf-cost-row">
+                                    <th>Custo Maio:</th>
+                                    <td id="pdf-budget-may"></td>
+                                </tr>
+                                <tr>
+                                    <th>Efetivo Maio:</th>
+                                    <td id="pdf-mandays-may"></td>
+                                </tr>
+                                <tr class="pdf-cost-row">
+                                    <th>Custo Junho:</th>
+                                    <td id="pdf-budget-jun"></td>
+                                </tr>
+                                <tr>
+                                    <th>Efetivo Junho:</th>
+                                    <td id="pdf-mandays-jun"></td>
+                                </tr>
+                                <tr class="pdf-cost-row">
+                                    <th>Custo Julho:</th>
+                                    <td id="pdf-budget-jul"></td>
+                                </tr>
+                                <tr>
+                                    <th>Efetivo Julho:</th>
+                                    <td id="pdf-mandays-jul"></td>
+                                </tr>
+                                <tr>
+                                    <th>Efetivo Total:</th>
+                                    <td id="pdf-total-mandays"></td>
+                                </tr>
+                                <tr>
+                                    <th>Pico de Efetivo/Dia:</th>
+                                    <td id="pdf-peak-manpower"></td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Details Block -->
+                        <div class="pdf-details" style="margin-top: 30px;">
+                            <h3 style="border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">2. DETALHAMENTO DE EVENTOS</h3>
+                            <table class="pdf-table details-table" style="margin-top: 15px; width: 100%; border-collapse: collapse; font-size: 11px;">
+                                <thead>
+                                    <tr style="background: #f8fafc;">
+                                        <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: left;">Evento / Datas</th>
+                                        <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">Período</th>
+                                        <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">Nível de Risco</th>
+                                        <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">Dias</th>
+                                        <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">Efetivo/Dia</th>
+                                        <th style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">Efetivo Total</th>
+                                        <th class="pdf-cost-col" style="border: 1px solid #cbd5e1; padding: 8px; text-align: right;">Custo Unit.</th>
+                                        <th class="pdf-cost-col" style="border: 1px solid #cbd5e1; padding: 8px; text-align: right;">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pdf-events-tbody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Edit Modal (Simplified) -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-title">Editar Evento</h3>
+                <button class="btn-close" id="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <form id="edit-form" class="modal-form new-modal-form">
+                <input type="hidden" id="edit-id">
+
+                <!-- Seção 1: Identificação -->
+                <div class="new-form-section">
+                    <div class="new-form-row" style="margin-bottom: 1rem;">
+                        <div class="form-group" style="flex:1; margin-bottom:0;">
+                            <label for="edit-name">Nome do Evento</label>
+                            <input type="text" id="edit-name" required placeholder="Ex: Arraial do IPEM...">
+                        </div>
+                        <label class="important-toggle-label">
+                            <input type="checkbox" id="edit-important">
+                            <span class="important-toggle-btn">
+                                <i data-lucide="star"></i> Prioritário
+                            </span>
+                        </label>
+                    </div>
+                    <div class="new-form-row" style="margin-bottom: 1rem;">
+                        <div class="form-group" style="flex:1; margin-bottom:0;">
+                            <label for="edit-units">Unidade(s) Empregada(s)</label>
+                            <input type="text" id="edit-units" placeholder="Ex: 1º BBM, 2º BBM...">
+                        </div>
+                    </div>
+                    <div class="new-form-row">
+                        <div class="form-group" style="flex:1; margin-bottom:0;">
+                            <label for="edit-time-start">Horário de Início</label>
+                            <input type="time" id="edit-time-start">
+                        </div>
+                        <div class="form-group" style="flex:1; margin-bottom:0;">
+                            <label for="edit-time-end">Horário de Término</label>
+                            <input type="time" id="edit-time-end">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 2: Calendário Unificado -->
+                <div class="new-form-section">
+                    <div class="new-section-title"><i data-lucide="calendar"></i> Datas do Evento</div>
+                    <div class="cal-tabs-row">
+                        <button type="button" class="cal-tab active" data-month="4">Maio</button>
+                        <button type="button" class="cal-tab" data-month="5">Junho</button>
+                        <button type="button" class="cal-tab" data-month="6">Julho</button>
+                    </div>
+                    <div id="unified-calendar" class="unified-calendar-grid"></div>
+                    <div class="cal-legend">
+                        <span class="cal-leg p1"><span class="leg-dot p1-dot"></span> P1 – Fins de Semana</span>
+                        <span class="cal-leg p2"><span class="leg-dot p2-dot"></span> P2 – Dias Úteis</span>
+                        <span class="cal-leg hint">Clique: P1 → P2 → Remover</span>
+                    </div>
+                </div>
+
+                <!-- Seção 3: Efetivo & Custo -->
+                <div class="new-form-section">
+                    <div class="new-section-title"><i data-lucide="users"></i> Efetivo & Custo</div>
+                    <div class="period-grid-table">
+                        <div class="period-grid-header">
+                            <div></div>
+                            <div title="Efetivo Base da Operação">BMs (Base)</div>
+                            <div title="Efetivo Extra de Coordenação">Coord. (BMs)</div>
+                            <div class="financial-form-field">Valor Unit. (R$)</div>
+                            <div>Risco</div>
+                        </div>
+                        <div class="period-grid-row">
+                            <div class="period-label p1-label">P1</div>
+                            <div><input type="number" id="edit-p1-efetivo" min="0" value="0"></div>
+                            <div><input type="number" id="edit-p1-coord" min="0" value="0"></div>
+                            <div class="financial-form-field"><input type="number" id="edit-p1-unit-cost" step="0.01" value="350"></div>
+                            <div>
+                                <select id="edit-p1-risk" class="input-select">
+                                    <option value="Nível I">Nível I</option>
+                                    <option value="Nível II">Nível II</option>
+                                    <option value="Nível III">Nível III</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="period-grid-row">
+                            <div class="period-label p2-label">P2</div>
+                            <div><input type="number" id="edit-p2-efetivo" min="0" value="0"></div>
+                            <div><input type="number" id="edit-p2-coord" min="0" value="0"></div>
+                            <div class="financial-form-field"><input type="number" id="edit-p2-unit-cost" step="0.01" value="300"></div>
+                            <div>
+                                <select id="edit-p2-risk" class="input-select">
+                                    <option value="Nível I">Nível I</option>
+                                    <option value="Nível II">Nível II</option>
+                                    <option value="Nível III">Nível III</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 4: Viaturas com Steppers -->
+                <div class="new-form-section">
+                    <div class="new-section-title"><i data-lucide="truck"></i> Viaturas</div>
+                    <div class="vtr-period-tabs">
+                        <button type="button" class="vtr-tab active" data-vtr-period="p1">P1 – Fins de Semana</button>
+                        <button type="button" class="vtr-tab" data-vtr-period="p2">P2 – Dias Úteis</button>
+                    </div>
+                    <div class="steppers-row">
+                        <div class="stepper-item">
+                            <div class="stepper-label">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="vtr-ar" style="width:20px;height:20px"><path d="M2 17h4M10 17h6M20 17h2"/><path d="M14 17V9a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v8"/><path d="M14 11h7l1 2v4h-2"/><circle cx="8" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg>
+                                AR (Picape)
+                            </div>
+                            <div class="stepper-control">
+                                <button type="button" class="step-btn" onclick="changeVtr('ar',-1)">−</button>
+                                <span class="step-val" id="stepper-val-ar">0</span>
+                                <button type="button" class="step-btn" onclick="changeVtr('ar',1)">+</button>
+                            </div>
+                        </div>
+                        <div class="stepper-item">
+                            <div class="stepper-label">
+                                <i data-lucide="ambulance" class="vtr-ur" style="width:20px;height:20px"></i>
+                                UR (Ambulância)
+                            </div>
+                            <div class="stepper-control">
+                                <button type="button" class="step-btn" onclick="changeVtr('ur',-1)">−</button>
+                                <span class="step-val" id="stepper-val-ur">0</span>
+                                <button type="button" class="step-btn" onclick="changeVtr('ur',1)">+</button>
+                            </div>
+                        </div>
+                        <div class="stepper-item">
+                            <div class="stepper-label">
+                                <i data-lucide="truck" class="vtr-abt" style="width:20px;height:20px"></i>
+                                ABT (Caminhão)
+                            </div>
+                            <div class="stepper-control">
+                                <button type="button" class="step-btn" onclick="changeVtr('abt',-1)">−</button>
+                                <span class="step-val" id="stepper-val-abt">0</span>
+                                <button type="button" class="step-btn" onclick="changeVtr('abt',1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 5: GPS (colapsável) -->
+                <div class="new-form-section collapsible-section">
+                    <button type="button" class="collapse-toggle-btn" id="gps-toggle">
+                        <span><i data-lucide="map-pin"></i> Localização no Mapa <em style="font-weight:400; color:var(--text-muted);">(opcional)</em></span>
+                        <i data-lucide="chevron-down" id="gps-chevron"></i>
+                    </button>
+                    <div class="collapse-body" id="gps-body">
+                        <div class="new-form-row" style="margin-top:0.75rem;">
+                            <div class="form-group" style="flex:1; margin-bottom:0;">
+                                <label for="edit-lat">Latitude</label>
+                                <input type="text" id="edit-lat" placeholder="Ex: -2.5307">
+                            </div>
+                            <div class="form-group" style="flex:1; margin-bottom:0;">
+                                <label for="edit-lng">Longitude</label>
+                                <input type="text" id="edit-lng" placeholder="Ex: -44.2755">
+                            </div>
+                        </div>
+                        <p style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem;">
+                            Clique com botão direito no Google Maps e copie as coordenadas.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Rodapé fixo: resumo ao vivo + botões -->
+                <div class="new-modal-footer">
+                    <div class="new-modal-summary">
+                        <div class="sum-stat">
+                            <i data-lucide="calendar"></i>
+                            <strong id="summary-days">0</strong> dias
+                        </div>
+                        <div class="sum-stat">
+                            <i data-lucide="users"></i>
+                            <strong id="summary-man-days">0</strong> BMs
+                        </div>
+                        <div class="sum-stat financial-data summary-cost-item">
+                            <i data-lucide="dollar-sign"></i>
+                            <strong id="summary-total-cost">R$ 0,00</strong>
+                        </div>
+                    </div>
+                    <div class="new-modal-footer-actions">
+                        <button type="button" class="btn-secondary" id="cancel-edit">Cancelar</button>
+                        <button type="submit" class="btn-primary">Salvar Evento</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Day Details Modal (Premium) -->
+
+    <!-- Day Details Modal (Premium) -->
+    <div id="day-modal" class="modal-overlay">
+        <div class="modal-content premium-day-modal">
+            <div class="modal-header">
+                <div class="modal-header-info">
+                    <h2 id="day-modal-title">Detalhes do Dia</h2>
+                    <p id="day-modal-subtitle">Resumo operacional e alocação de recursos</p>
+                </div>
+                <button class="btn-close" id="close-day-modal">&times;</button>
+            </div>
+            
+            <div class="day-modal-body">
+                <!-- Summary Cards -->
+                <div class="day-resource-cards">
+                    <div class="res-card gold">
+                        <div class="res-icon"><i data-lucide="users"></i></div>
+                        <div class="res-info">
+                            <span class="res-label">Efetivo Total</span>
+                            <h3 id="day-total-efetivo">0</h3>
+                        </div>
+                    </div>
+                    <div class="res-card blue">
+                        <div class="res-icon"><i data-lucide="truck"></i></div>
+                        <div class="res-info">
+                            <span class="res-label">VTRs (AR)</span>
+                            <h3 id="day-total-ar">0</h3>
+                        </div>
+                    </div>
+                    <div class="res-card red">
+                        <div class="res-icon"><i data-lucide="ambulance"></i></div>
+                        <div class="res-info">
+                            <span class="res-label">VTRs (UR)</span>
+                            <h3 id="day-total-ur">0</h3>
+                        </div>
+                    </div>
+                    <div class="res-card dark-red">
+                        <div class="res-icon"><i data-lucide="truck"></i></div>
+                        <div class="res-info">
+                            <span class="res-label">VTRs (ABT)</span>
+                            <h3 id="day-total-abt">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="day-events-section">
+                    <h4><i data-lucide="list-checks"></i> Eventos e Arraiais</h4>
+                    <div id="day-events-container" class="day-events-grid">
+                        <!-- Events will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scale Preview Modal -->
+    <div id="scale-modal" class="modal-overlay">
+        <div class="modal-content scale-modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0;">
+            <div class="modal-header" style="background: white; border-bottom: 1px solid #e2e8f0; padding: 1.5rem; border-radius: 12px 12px 0 0;">
+                <div class="modal-header-info">
+                    <h2 id="scale-modal-title" style="margin: 0; font-size: 1.25rem;">Pré-visualização da Escala</h2>
+                    <p style="margin: 0; font-size: 0.85rem; color: #64748b;">Confira a ordem de serviço antes de baixar o PDF.</p>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button class="btn-primary" id="btn-download-scale">
+                        <i data-lucide="download"></i> Baixar PDF
+                    </button>
+                    <button class="btn-close" id="close-scale-modal" style="position: relative; right: 0; top: 0; margin-left: 10px;">&times;</button>
+                </div>
+            </div>
+            
+            <div class="modal-body" style="flex: 1; overflow-y: auto; background: #e2e8f0; padding: 2rem; display: flex; justify-content: center;">
+                <div class="a4-document" id="scale-pdf-content" style="background: white; width: 210mm; min-height: 297mm; padding: 20mm; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin: 0 auto; display: block;">
+                    <!-- Official Header -->
+                    <div style="text-align: center; border-bottom: 2px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px;">
+                        <h3 style="font-size: 14px; margin-bottom: 4px; font-weight: bold; margin-top: 0;">ESTADO DO MARANHÃO</h3>
+                        <h4 style="font-size: 13px; margin-bottom: 4px; font-weight: 600; margin-top: 0;">CORPO DE BOMBEIROS MILITAR</h4>
+                        <h4 style="font-size: 13px; margin-bottom: 10px; font-weight: 600; margin-top: 0;">COMANDO OPERACIONAL DO CORPO DE BOMBEIROS METROPOLITANO - COCB-M</h4>
+                        <span id="scale-pdf-title" style="display: none;"></span>
+                    </div>
+
+                    <div id="scale-pdf-body">
+                        <!-- Content injected via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="script.js"></script>
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
