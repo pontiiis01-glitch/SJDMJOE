@@ -5,13 +5,14 @@
 
 // --- FIREBASE CONFIG (PASTE YOUR CONFIG HERE) ---
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_PROJETO.firebaseapp.com",
-    databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
-    projectId: "SEU_PROJETO",
-    storageBucket: "SEU_PROJETO.appspot.com",
-    messagingSenderId: "SEU_ID",
-    appId: "SEU_APP_ID"
+    apiKey: "AIzaSyAWBtZ6vqNd3-g9BLsdQ9qGLm0XNO9HdmY",
+    authDomain: "planejamento-joe.firebaseapp.com",
+    databaseURL: "https://planejamento-joe-default-rtdb.firebaseio.com",
+    projectId: "planejamento-joe",
+    storageBucket: "planejamento-joe.firebasestorage.app",
+    messagingSenderId: "460779777190",
+    appId: "1:460779777190:web:9c07790f774e331e461867",
+    measurementId: "G-85NR0M8S4T"
 };
 
 // Initialize Firebase if config is filled
@@ -143,6 +144,10 @@ try {
 
 function saveToStorage() {
     localStorage.setItem('JOE_PLAN_2026', JSON.stringify(JOE_DATA));
+    if (db) {
+        db.ref('joe_plan_2026/events').set(JOE_DATA).catch(console.error);
+        db.ref('joe_plan_2026/lastSync').set(new Date().toISOString()).catch(console.error);
+    }
 }
 
 const LOGISTICS_DATA = {
@@ -411,9 +416,9 @@ function initDashboard() {
     // 11. Finances Toggle
     initFinancesToggle();
 
-    // Initial Cloud Pull if enabled
+    // Ativar Sincronização em Tempo Real (se configurado)
     if (db) {
-        pullFromCloud();
+        initCloudSync();
     }
 }
 
@@ -455,54 +460,41 @@ function initFinancesToggle() {
     });
 }
 
-// --- CLOUD SYNC LOGIC ---
-async function syncWithCloud() {
-    if (!db) {
-        alert("Firebase não configurado. Cole suas credenciais no script.js");
-        return;
-    }
-    
-    const btn = document.getElementById('btn-cloud-sync');
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> <span>Sincronizando...</span>';
-    lucide.createIcons();
-
-    try {
-        const dataToSync = {
-            events: JOE_DATA,
-            notes: JSON.parse(localStorage.getItem('JOE_PLAN_NOTES_2026')) || {},
-            lastSync: new Date().toISOString()
-        };
-        
-        await db.ref('joe_plan_2026').set(dataToSync);
-        alert("Dados sincronizados com a nuvem com sucesso!");
-    } catch (error) {
-        console.error("Erro na sincronização:", error);
-        alert("Erro ao sincronizar. Verifique as regras do seu Database.");
-    } finally {
-        btn.innerHTML = originalHtml;
-        lucide.createIcons();
-    }
-}
-
-async function pullFromCloud() {
+// --- CLOUD SYNC LOGIC (REALTIME) ---
+function initCloudSync() {
     if (!db) return;
-    try {
-        const snapshot = await db.ref('joe_plan_2026').once('value');
+    
+    // Listen for real-time changes
+    db.ref('joe_plan_2026').on('value', (snapshot) => {
         const cloudData = snapshot.val();
         if (cloudData && cloudData.events) {
-            // Merge or replace? For now, we'll replace to ensure consistency across Netlify deploys
-            JOE_DATA = cloudData.events;
+            JOE_DATA = cloudData.events.map(calculateTotals);
             localStorage.setItem('JOE_PLAN_2026', JSON.stringify(JOE_DATA));
+            
             if (cloudData.notes) {
                 localStorage.setItem('JOE_PLAN_NOTES_2026', JSON.stringify(cloudData.notes));
             }
+            
             refreshUI();
             loadPlanningNotes();
-            console.log("Dados carregados da nuvem.");
+            console.log("Dados sincronizados em tempo real da nuvem.");
         }
-    } catch (error) {
-        console.error("Erro ao baixar dados da nuvem:", error);
+    });
+}
+
+async function syncWithCloud() {
+    // Agora a sincronização é automática via saveToStorage(),
+    // mas mantemos o botão apenas para feedback visual opcional ou forçar sincronização
+    if (!db) {
+        alert("Firebase não configurado. Adicione suas credenciais no script.js");
+        return;
+    }
+    const btn = document.getElementById('btn-cloud-sync');
+    if(btn) {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="check" class="spin"></i> <span>Sincronizado</span>';
+        lucide.createIcons();
+        setTimeout(() => { btn.innerHTML = originalHtml; lucide.createIcons(); }, 2000);
     }
 }
 
@@ -559,6 +551,10 @@ function savePlanningNotes() {
         critical: document.getElementById('note-critical').value
     };
     localStorage.setItem('JOE_PLAN_NOTES_2026', JSON.stringify(notes));
+    if (db) {
+        db.ref('joe_plan_2026/notes').set(notes).catch(console.error);
+        db.ref('joe_plan_2026/lastSync').set(new Date().toISOString()).catch(console.error);
+    }
 }
 
 function loadPlanningNotes() {
