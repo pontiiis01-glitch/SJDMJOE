@@ -201,8 +201,12 @@ const EVENT_COLORS = [
     { bg: '#4d7c0f', border: '#3f6212' }  // Olive
 ];
 
-function getEventColor(name) {
-    if (!name) return EVENT_COLORS[0];
+function getEventColor(event) {
+    if (!event) return EVENT_COLORS[0];
+    if (event.isImportant === false) {
+        return { bg: '#94a3b8', border: '#64748b' }; // Cinza para não prioritários
+    }
+    const name = typeof event === 'string' ? event : event.name;
     let hash = 5381;
     for (let i = 0; i < name.length; i++) {
         hash = ((hash << 5) + hash) ^ name.charCodeAt(i); /* hash * 33 ^ c */
@@ -616,7 +620,7 @@ function refreshUI() {
     
     // 3. Update Calendar if visible
     if (document.getElementById('calendar').classList.contains('active')) {
-        renderOperationalCalendar();
+        renderOperationalCalendar(visibleData);
     }
 
     // 4. Render Event List
@@ -1481,28 +1485,29 @@ function downloadExcel() {
 }
 
 // --- CALENDAR LOGIC ---
-function renderOperationalCalendar() {
+function renderOperationalCalendar(eventList) {
+    const dataToRender = eventList || getFilteredEvents().filter(e => !e.hidden);
     const mayContainer = document.getElementById('calendar-may');
     const junContainer = document.getElementById('calendar-jun');
     const julContainer = document.getElementById('calendar-jul');
     
     if (!mayContainer || !junContainer || !julContainer) return;
 
-    mayContainer.innerHTML = renderMonth(4, 2026, "Maio");
-    junContainer.innerHTML = renderMonth(5, 2026, "Junho");
-    julContainer.innerHTML = renderMonth(6, 2026, "Julho");
+    mayContainer.innerHTML = renderMonth(4, 2026, "Maio", dataToRender);
+    junContainer.innerHTML = renderMonth(5, 2026, "Junho", dataToRender);
+    julContainer.innerHTML = renderMonth(6, 2026, "Julho", dataToRender);
     
     lucide.createIcons();
 }
 
-function renderMonth(month, year, monthName) {
+function renderMonth(month, year, monthName, eventList = JOE_DATA) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = new Date(year, month, 1).getDay();
     
     // --- Pre-calculate Event Tracks (Lanes) for the Month ---
     const monthStats = []; // Array of day stats
     for (let d = 1; d <= daysInMonth; d++) {
-        monthStats[d] = getDailyStats(d, month);
+        monthStats[d] = getDailyStats(d, month, eventList);
     }
 
     // Assign tracks
@@ -1511,7 +1516,7 @@ function renderMonth(month, year, monthName) {
 
     // First, find all unique events in this month
     const allEventsInMonth = [];
-    JOE_DATA.filter(e => !e.hidden).forEach(event => {
+    eventList.filter(e => !e.hidden).forEach(event => {
         let active = false;
         for (let d = 1; d <= daysInMonth; d++) {
             if (isEventActiveOnDay(event, d, month)) {
@@ -1569,22 +1574,28 @@ function renderMonth(month, year, monthName) {
     }
     
     const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const isSearching = (document.getElementById('event-search')?.value || '').trim() !== '';
     
     let html = `
         <div class="month-title"><i data-lucide="calendar-range"></i> ${monthName} ${year}</div>
         <div class="calendar-grid">
-            ${weekDays.map(d => `<div class="calendar-day-head">${d}</div>`).join('')}
+            ${isSearching ? '' : weekDays.map(d => `<div class="calendar-day-head">${d}</div>`).join('')}
     `;
     
-    // Empty days before first day
-    for (let i = 0; i < firstDay; i++) {
-        html += `<div class="calendar-day other-month"></div>`;
+    if (!isSearching) {
+        // Empty days before first day
+        for (let i = 0; i < firstDay; i++) {
+            html += `<div class="calendar-day other-month"></div>`;
+        }
     }
     
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
         const stats = monthStats[day];
+        if (isSearching && stats.events.length === 0) continue;
+        
         const alertClass = stats.efetivo > 150 ? 'visible' : ''; // Alert if > 150 BMs
+        const weekDayName = weekDays[(firstDay + day - 1) % 7];
 
         const renderResourceCell = (type, count) => {
             if (count === 0) return '';
@@ -1606,7 +1617,7 @@ function renderMonth(month, year, monthName) {
         for (let t = 0; t < maxTrackCount; t++) {
             const eventOnTrack = stats.events.find(e => eventTracks[e.name] === t);
             if (eventOnTrack) {
-                const color = getEventColor(eventOnTrack.name);
+                const color = getEventColor(eventOnTrack);
                 const isActiveYesterday = day > 1 && isEventActiveOnDayByName(eventOnTrack.name, day - 1, month);
                 const isActiveTomorrow = day < daysInMonth && isEventActiveOnDayByName(eventOnTrack.name, day + 1, month);
                 
@@ -1633,7 +1644,7 @@ function renderMonth(month, year, monthName) {
         html += `
             <div class="calendar-day" onclick="showDayDetails(${day}, ${month})">
                 <div class="day-total-alert ${alertClass}"></div>
-                <div class="day-number">${day}</div>
+                <div class="day-number">${day} ${isSearching ? `<span style="font-size: 0.75em; font-weight: normal; color: #64748b; margin-left: 4px;">(${weekDayName})</span>` : ''}</div>
                 <div class="day-stats">
                     ${stats.efetivo > 0 ? `<div class="day-resource bm"><i data-lucide="users"></i> ${stats.efetivo}</div>` : ''}
                     ${renderResourceCell('ar', stats.ar)}
@@ -1672,10 +1683,10 @@ function getEventStartDayInMonth(event, month, daysInMonth) {
     return 99;
 }
 
-function getDailyStats(day, month) {
+function getDailyStats(day, month, eventList = JOE_DATA) {
     const stats = { efetivo: 0, ar: 0, ur: 0, abt: 0, events: [] };
 
-    JOE_DATA.forEach(event => {
+    eventList.forEach(event => {
         if (event.hidden) return;
         let activeP1 = false;
         let activeP2 = false;
@@ -1713,6 +1724,7 @@ function getDailyStats(day, month) {
             stats.events.push({ 
                 name: event.name, 
                 risk: event.p1.risk,
+                isImportant: event.isImportant,
                 ef: ef,
                 vtrs: { ar: arCount, ur: urCount, abt: abtCount },
                 vRaw: vRaw
