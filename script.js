@@ -22,6 +22,8 @@ if (firebaseConfig.apiKey !== "SUA_API_KEY") {
     db = firebase.database();
 }
 
+let hideNonPriorityCalendar = false;
+
 // --- DATA ---
 const DEFAULT_JOE_DATA = [
     { id: 1, name: "Cortejo", dateString: "05 de junho de 2026", p1: { daysJun: 1, daysJul: 0, days: 1, efetivo: 40, unitCost: 350, risk: "Nível III", vehicles: { ar: 2, ur: 1, abt: 1 } }, p2: { daysJun: 0, daysJul: 0, days: 0, efetivo: 0, unitCost: 300, risk: "Nível II", vehicles: { ar: 0, ur: 0, abt: 0 } } },
@@ -1359,6 +1361,23 @@ function initTabs() {
     if (btnExcel) {
         btnExcel.addEventListener('click', downloadExcel);
     }
+
+    // Toggle priority events in calendar
+    const btnTogglePriority = document.getElementById('btn-toggle-priority');
+    if (btnTogglePriority) {
+        btnTogglePriority.addEventListener('click', () => {
+            hideNonPriorityCalendar = !hideNonPriorityCalendar;
+            if (hideNonPriorityCalendar) {
+                btnTogglePriority.innerHTML = '<i data-lucide="list"></i> Mostrar Todos';
+                btnTogglePriority.style.backgroundColor = '#fef3c7';
+            } else {
+                btnTogglePriority.innerHTML = '<i data-lucide="star"></i> Somente Prioritários';
+                btnTogglePriority.style.backgroundColor = '';
+            }
+            lucide.createIcons();
+            renderOperationalCalendar();
+        });
+    }
 }
 
 // --- REPORT / PDF GENERATION ---
@@ -1486,7 +1505,10 @@ function downloadExcel() {
 
 // --- CALENDAR LOGIC ---
 function renderOperationalCalendar(eventList) {
-    const dataToRender = eventList || getFilteredEvents().filter(e => !e.hidden);
+    let dataToRender = eventList || getFilteredEvents().filter(e => !e.hidden);
+    if (hideNonPriorityCalendar) {
+        dataToRender = dataToRender.filter(e => e.isImportant);
+    }
     const mayContainer = document.getElementById('calendar-may');
     const junContainer = document.getElementById('calendar-jun');
     const julContainer = document.getElementById('calendar-jul');
