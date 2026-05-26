@@ -705,7 +705,7 @@ function renderEventList(data = JOE_DATA) {
         <div class="event-item${importantClass} ${event.hidden ? 'is-hidden' : ''}">
             <div class="event-item-header">
                 <h4 style="display: flex; align-items: center;">${starIcon}${event.name} ${event.hidden ? '<span style="font-size: 0.6rem; color: #ef4444; margin-left: 8px;">(OCULTO)</span>' : ''}</h4>
-                <div class="event-item-header-actions" style="display: flex; gap: 0.25rem; align-items: center;">
+                <div class="event-item-header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
                     <span class="badge ${getBadgeClass(maxRisk)}">${maxRisk}</span>
                     <button class="btn-edit-small" onclick="toggleDetails(${event.id})" title="Ver Cálculos">
                         <i data-lucide="calculator"></i>
@@ -1219,6 +1219,9 @@ function initModalListeners() {
         });
     }
 
+    document.getElementById('btn-prev-day')?.addEventListener('click', prevDayDetails);
+    document.getElementById('btn-next-day')?.addEventListener('click', nextDayDetails);
+
     document.getElementById('close-day-modal').addEventListener('click', () => {
         document.getElementById('day-modal').classList.remove('active');
     });
@@ -1341,11 +1344,16 @@ function initTabs() {
             const target = tab.dataset.tab;
             document.getElementById(target).classList.add('active');
             
+            const tabTitle = document.getElementById('tab-title');
+            if (tabTitle) {
+                tabTitle.textContent = tab.querySelector('span').textContent;
+            }
+            
             if (target === 'calendar') {
                 renderOperationalCalendar();
             } else if (target === 'logistics') {
                 setTimeout(initMap, 100); // Small delay to ensure div is visible
-                renderRiskSummaries();
+                renderRiskCards();
             }
         });
     });
@@ -1797,9 +1805,41 @@ function isDateInString(day, month, dateStr) {
     return false;
 }
 
+let currentDetailDay = null;
+let currentDetailMonth = null;
+
+function prevDayDetails() {
+    let day = currentDetailDay;
+    let month = currentDetailMonth;
+    
+    day--;
+    if (day < 1) {
+        month--;
+        if (month < 4) return;
+        day = new Date(2026, month + 1, 0).getDate();
+    }
+    showDayDetails(day, month);
+}
+
+function nextDayDetails() {
+    let day = currentDetailDay;
+    let month = currentDetailMonth;
+    
+    const daysInMonth = new Date(2026, month + 1, 0).getDate();
+    day++;
+    if (day > daysInMonth) {
+        month++;
+        if (month > 6) return;
+        day = 1;
+    }
+    showDayDetails(day, month);
+}
+
 function showDayDetails(day, month) {
+    currentDetailDay = day;
+    currentDetailMonth = month;
+
     const stats = getDailyStats(day, month);
-    if (stats.events.length === 0) return;
     
     const monthName = month === 4 ? 'Maio' : (month === 5 ? 'Junho' : 'Julho');
     
@@ -1810,6 +1850,12 @@ function showDayDetails(day, month) {
     document.getElementById('day-total-ur').textContent = stats.ur;
     document.getElementById('day-total-abt').textContent = stats.abt;
     
+    // Update disabled state for nav buttons
+    const btnPrev = document.getElementById('btn-prev-day');
+    const btnNext = document.getElementById('btn-next-day');
+    if (btnPrev) btnPrev.disabled = (month === 4 && day === 1);
+    if (btnNext) btnNext.disabled = (month === 6 && day === 31);
+    
     const container = document.getElementById('day-events-container');
     
     const formatVtrDay = (type, raw, count) => {
@@ -1818,23 +1864,27 @@ function showDayDetails(day, month) {
         return `<div class="res-summary-item" style="display: flex; align-items: center; gap: 6px;">${getVtrIcon(type)}<strong>${display}</strong></div>`;
     };
 
-    container.innerHTML = stats.events.map(e => `
-        <div class="day-event-detail-card">
-            <div class="event-main-info">
-                <span class="badge ${getBadgeClass(e.risk)}">${e.risk}</span>
-                <h5>${e.name}</h5>
-            </div>
-            <div class="event-resources-summary">
-                <div class="res-summary-item">
-                    <span>Efetivo</span>
-                    <strong>${e.ef} BM</strong>
+    if (stats.events.length === 0) {
+        container.innerHTML = `<p style="text-align: center; color: var(--text-muted); padding: 2rem; font-style: italic; width: 100%;">Nenhum evento agendado para este dia.</p>`;
+    } else {
+        container.innerHTML = stats.events.map(e => `
+            <div class="day-event-detail-card">
+                <div class="event-main-info">
+                    <span class="badge ${getBadgeClass(e.risk)}">${e.risk}</span>
+                    <h5>${e.name}</h5>
                 </div>
-                ${formatVtrDay('ar', e.vRaw.ar, e.vtrs.ar)}
-                ${formatVtrDay('ur', e.vRaw.ur, e.vtrs.ur)}
-                ${formatVtrDay('abt', e.vRaw.abt, e.vtrs.abt)}
+                <div class="event-resources-summary">
+                    <div class="res-summary-item">
+                        <span>Efetivo</span>
+                        <strong>${e.ef} BM</strong>
+                    </div>
+                    ${formatVtrDay('ar', e.vRaw.ar, e.vtrs.ar)}
+                    ${formatVtrDay('ur', e.vRaw.ur, e.vtrs.ur)}
+                    ${formatVtrDay('abt', e.vRaw.abt, e.vtrs.abt)}
+                </div>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
     
     document.getElementById('day-modal').classList.add('active');
     lucide.createIcons();

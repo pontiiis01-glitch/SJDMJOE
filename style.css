@@ -182,9 +182,10 @@ body.sidebar-collapsed .app-container {
     max-width: 1400px;
     margin: 0 auto;
     width: 100%;
+    min-width: 0;
 }
 
-.top-header {
+.main-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1087,6 +1088,11 @@ body.sidebar-collapsed .app-container {
     padding-bottom: 0.5rem;
 }
 
+.month-container {
+    width: 100%;
+    min-width: 600px;
+}
+
 .month-title {
     font-size: 1.4rem;
     font-weight: 800;
@@ -1244,23 +1250,73 @@ body.sidebar-collapsed .app-container {
 /* Premium Modal Details */
 .premium-day-modal {
     max-width: 800px !important;
+    width: 95%;
+    max-height: 90vh;
     padding: 0 !important;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .premium-day-modal .modal-header {
     background: var(--secondary);
     color: white;
-    padding: 2rem;
+    padding: 1.25rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.premium-day-modal .modal-header h2 { color: white; }
-.premium-day-modal .modal-header p { color: rgba(255,255,255,0.7); }
-.premium-day-modal .btn-close { color: white; opacity: 0.8; }
+.modal-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex: 1;
+}
+
+.btn-day-nav {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.btn-day-nav:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: scale(1.05);
+}
+
+.btn-day-nav:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn-day-nav i {
+    width: 18px;
+    height: 18px;
+}
+
+.premium-day-modal .modal-header h2 { color: white; margin: 0; }
+.premium-day-modal .modal-header p { color: rgba(255,255,255,0.7); margin: 0; }
+.premium-day-modal .btn-close { color: white; opacity: 0.8; font-size: 1.5rem; }
 
 .day-modal-body {
     padding: 2rem;
     background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
 }
 
 .day-resource-cards {
@@ -1308,6 +1364,13 @@ body.sidebar-collapsed .app-container {
     color: var(--secondary);
 }
 
+.day-events-section {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+}
+
 .day-events-section h4 {
     display: flex;
     align-items: center;
@@ -1321,6 +1384,22 @@ body.sidebar-collapsed .app-container {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 0.5rem;
+}
+
+.day-events-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.day-events-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.day-events-grid::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
 }
 
 .day-event-detail-card {

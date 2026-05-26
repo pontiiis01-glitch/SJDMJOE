@@ -263,7 +263,7 @@
                             <h2>Calendário de Empenho JOE 2026</h2>
                             <p>Visualize a sobreposição de eventos e o efetivo total diário</p>
                         </div>
-                        <div class="calendar-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <div class="calendar-actions" style="display: flex; gap: 1rem; flex-wrap: wrap;">
                             <button class="btn-secondary" id="btn-toggle-priority" style="font-size: 0.85rem; padding: 0.5rem 1rem; border-color: #f59e0b; color: #d97706;"><i data-lucide="star"></i> Somente Prioritários</button>
                             <button class="btn-secondary" onclick="previewScale(4)" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><i data-lucide="printer"></i> Escala Maio</button>
                             <button class="btn-secondary" onclick="previewScale(5)" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><i data-lucide="printer"></i> Escala Junho</button>
@@ -574,9 +574,17 @@
     <div id="day-modal" class="modal-overlay">
         <div class="modal-content premium-day-modal">
             <div class="modal-header">
-                <div class="modal-header-info">
-                    <h2 id="day-modal-title">Detalhes do Dia</h2>
-                    <p id="day-modal-subtitle">Resumo operacional e alocação de recursos</p>
+                <div class="modal-header-nav">
+                    <button class="btn-day-nav" id="btn-prev-day" title="Dia anterior">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <div class="modal-header-info">
+                        <h2 id="day-modal-title">Detalhes do Dia</h2>
+                        <p id="day-modal-subtitle">Resumo operacional e alocação de recursos</p>
+                    </div>
+                    <button class="btn-day-nav" id="btn-next-day" title="Próximo dia">
+                        <i data-lucide="chevron-right"></i>
+                    </button>
                 </div>
                 <button class="btn-close" id="close-day-modal">&times;</button>
             </div>
